@@ -35,6 +35,7 @@ Quickstart
     <a class="pagemore-paginator" href="?{{paginator.next_query}}">More items...</a>
     {% endif %}
     {% endif %}
+    {% endfor %}
 
     <script type="text/javascript" src="{{STATIC_URL}}pagemore/js/pagemore.js"></script>
 
