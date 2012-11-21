@@ -7,6 +7,7 @@ register = template.Library()
 
 @register.assignment_tag(takes_context=True)
 def more_paginator(context, objects, per_page=10, ordered_by='id'):
+    objects = objects.order_by(ordered_by)
     request = context['request']
     if ordered_by[0] == '-':
         field = ordered_by[1:]
