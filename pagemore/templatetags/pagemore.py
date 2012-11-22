@@ -4,42 +4,121 @@ from datetime import datetime
 from django import template
 from django.db.models.fields import DateTimeField
 from django.utils import timezone
+from django.db.models.query import QuerySet
 
 register = template.Library()
 
-@register.assignment_tag(takes_context=True)
-def more_paginator(context, objects, per_page=10, ordered_by='id'):
-    objects = objects.order_by(ordered_by)
-    request = context['request']
-    if ordered_by[0] == '-':
-        field = ordered_by[1:]
-        op = 'lt'
-    else:
-        field = ordered_by
-        op = 'gt'
-    get_param = 'pagemore_after'
-    after_val = request.GET.get(get_param)
-    if after_val is not None:
-        field_type = objects.model._meta.get_field_by_name(field)[0]
-        if isinstance(field_type, DateTimeField):
-            after_val = timezone.make_aware(datetime.fromtimestamp
-                                            (int(after_val)), timezone.utc)
-        objects = objects.filter(**{field + '__' + op: after_val} )
-    objects = list(objects[0:per_page+1]) # evaluate qs, intentionally
-    has_more = len(objects) > per_page
-    objects = objects[0:per_page]
-    object_count = len(objects) 
-    if object_count:
-        next_after_val = getattr(objects[-1], field)
-        if isinstance(next_after_val, datetime):
-            next_after_val = int(calendar.timegm(next_after_val.utctimetuple()))
-    else:
+class PaginationMethod(object):
+    COMPARISON = 'comparison'
+    SLICING = 'slicing'
+
+
+class BasePaginator(object):
+
+    def __init__(self, request, objects, per_page, ordered_by):
+        self.request = request
+        self.objects = objects
+        self.per_page = per_page or 10
+        self.ordered_by = ordered_by
+
+    def get_context_data(self):
+        objects, next_val = self.paginate()
+        has_more = next_val is not None
+        get = self.request.GET.copy()
+        get[self.GET_PARAM] = next_val
+        return dict(objects=objects,
+                    object_count=len(objects),
+                    has_more=has_more,
+                    next_query=get.urlencode())
+
+
+class ComparisonPaginator(BasePaginator):
+    GET_PARAM = 'pagemore_after'
+
+    def __init__(self, request, objects, per_page, ordered_by):
+        if not isinstance(objects, QuerySet):
+            raise NotImplementedError('Only use the comparison method on'
+                                      ' querysets')
+        ordered_by = ordered_by or 'id'
+        objects = objects.order_by(ordered_by)
+        super(ComparisonPaginator, self).__init__(request,
+                                                 objects,
+                                                 per_page,
+                                                 ordered_by)
+        if ordered_by[0] == '-':
+            self.order_field = ordered_by[1:]
+            self.order_op = 'lt'
+        else:
+            self.order_field = ordered_by
+            self.order_op = 'gt'
+
+    def paginate(self):
+        after_val = self.request.GET.get(self.GET_PARAM)
+        objects = self.objects
+        if after_val is not None:
+            field_type = self.objects.model \
+                ._meta.get_field_by_name(self.order_field)[0]
+            if isinstance(field_type, DateTimeField):
+                after_val = timezone.make_aware(datetime.fromtimestamp
+                                                (int(after_val)), timezone.utc)
+            order_q = self.order_field + '__' + self.order_op
+            objects = objects.filter(**{order_q: after_val} )
+        objects = list(objects[0:self.per_page+1]) # evaluate qs, intentionally
         next_after_val = None
-    get = request.GET.copy()
-    get[get_param] = next_after_val
-    return dict(objects=objects,
-                object_count=object_count,
-                has_more=has_more,
-                next_query=get.urlencode(),
-                next_after_val=next_after_val)
+        if len(objects) > self.per_page:
+            next_after_val = getattr(objects[-2], self.order_field)
+            if isinstance(next_after_val, datetime):
+                next_after_val = int(calendar.timegm(next_after_val
+                                                     .utctimetuple()))
+            objects = objects[0:self.per_page]
+        else:
+            next_after_val = None
+        return objects, next_after_val
+    
+
+class SlicingPaginator(BasePaginator):
+    GET_PARAM = 'pagemore_page'
+
+    def __init__(self, request, objects, per_page, ordered_by):
+        if ordered_by:
+            if not isinstance(objects, QuerySet):
+                raise NotImplementedError('Ordering is only supported for'
+                                          ' querysets')
+            objects = objects.order_by(ordered_by)
+        super(SlicingPaginator, self).__init__(request,
+                                               objects,
+                                               per_page,
+                                               ordered_by)
+
+
+    def get_page(self):
+        try:
+            page = int(self.request.GET.get(self.GET_PARAM, 1))
+        except ValueError:
+            page = 1
+        return page
+
+    def paginate(self):
+        page = self.get_page()
+        page0 = self.get_page() - 1
+        objects = self.objects[page0*self.per_page:1+page*self.per_page]
+        objects = list(objects) # evaluate qs, intentionally
+        next_page = None
+        if len(objects) > self.per_page:
+            next_page = page + 1
+            objects = objects[0:self.per_page]
+        return objects, next_page
+
+
+@register.assignment_tag(takes_context=True)
+def more_paginator(context, objects, per_page=None, ordered_by=None,
+                   method=PaginationMethod.COMPARISON):
+    paginator_klazz = { PaginationMethod.COMPARISON: ComparisonPaginator,
+                        PaginationMethod.SLICING: SlicingPaginator }[method]
+    request = context['request']
+    paginator = paginator_klazz(request, 
+                                objects, 
+                                per_page=per_page,
+                                ordered_by=ordered_by)
+    return paginator.get_context_data()
 
