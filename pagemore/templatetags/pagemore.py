@@ -1,7 +1,9 @@
-import time
+import calendar
 from datetime import datetime
+
 from django import template
 from django.db.models.fields import DateTimeField
+from django.utils import timezone
 
 register = template.Library()
 
@@ -20,7 +22,8 @@ def more_paginator(context, objects, per_page=10, ordered_by='id'):
     if after_val is not None:
         field_type = objects.model._meta.get_field_by_name(field)[0]
         if isinstance(field_type, DateTimeField):
-            after_val = datetime.fromtimestamp(int(after_val))
+            after_val = timezone.make_aware(datetime.fromtimestamp
+                                            (int(after_val)), timezone.utc)
         objects = objects.filter(**{field + '__' + op: after_val} )
     objects = list(objects[0:per_page+1]) # evaluate qs, intentionally
     has_more = len(objects) > per_page
@@ -29,7 +32,7 @@ def more_paginator(context, objects, per_page=10, ordered_by='id'):
     if object_count:
         next_after_val = getattr(objects[-1], field)
         if isinstance(next_after_val, datetime):
-            next_after_val = int(time.mktime(next_after_val.timetuple()))
+            next_after_val = int(calendar.timegm(next_after_val.utctimetuple()))
     else:
         next_after_val = None
     get = request.GET.copy()
