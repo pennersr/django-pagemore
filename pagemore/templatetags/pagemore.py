@@ -8,9 +8,9 @@ from django.db.models.query import QuerySet
 
 register = template.Library()
 
-class PaginationMethod(object):
-    COMPARISON = 'comparison'
-    SLICING = 'slicing'
+class PaginationStrategy(object):
+    FILTER = 'filter'
+    SLICE = 'slice'
 
 
 class BasePaginator(object):
@@ -32,16 +32,16 @@ class BasePaginator(object):
                     next_query=get.urlencode())
 
 
-class ComparisonPaginator(BasePaginator):
+class FilteringPaginator(BasePaginator):
     GET_PARAM = 'pagemore_after'
 
     def __init__(self, request, objects, per_page, ordered_by):
         if not isinstance(objects, QuerySet):
-            raise NotImplementedError('Only use the comparison method on'
-                                      ' querysets')
+            raise NotImplementedError('The "filter" strategy supports only'
+                                      ' querysets, use strategy="slice"')
         ordered_by = ordered_by or 'id'
         objects = objects.order_by(ordered_by)
-        super(ComparisonPaginator, self).__init__(request,
+        super(FilteringPaginator, self).__init__(request,
                                                  objects,
                                                  per_page,
                                                  ordered_by)
@@ -112,13 +112,19 @@ class SlicingPaginator(BasePaginator):
 
 @register.assignment_tag(takes_context=True)
 def more_paginator(context, objects, per_page=None, ordered_by=None,
-                   method=PaginationMethod.COMPARISON):
-    paginator_klazz = { PaginationMethod.COMPARISON: ComparisonPaginator,
-                        PaginationMethod.SLICING: SlicingPaginator }[method]
+                   strategy=PaginationStrategy.FILTER):
     request = context['request']
-    paginator = paginator_klazz(request, 
-                                objects, 
-                                per_page=per_page,
-                                ordered_by=ordered_by)
+    # Shortcut when there is nothing to paginate
+    # not just 'if objects:' -- I don't want to eval a qs
+    if objects is None or objects == '':
+        paginator = SlicingPaginator(request, [], None, None)
+    else:
+        paginator_klazz = { 
+            PaginationStrategy.FILTER: FilteringPaginator,
+            PaginationStrategy.SLICE: SlicingPaginator }[strategy]
+        paginator = paginator_klazz(request, 
+                                    objects, 
+                                    per_page=per_page,
+                                    ordered_by=ordered_by)
     return paginator.get_context_data()
 

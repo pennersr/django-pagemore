@@ -46,17 +46,39 @@ Quickstart
 
 - That's all!
 
-Q&A
-===
+Pagination Strategies
+=====================
 
-**Q:** Why does the template tag order the items itself, slicing them
-using on `__gt` like operators? Why not use offset based slicing of an
-already ordered queryset?
-
-**A:** If a user is paginating through a list of items, while at the
-same time new items are inserted, offset based slicing would result in
-duplicate items being shown.
+When a user is paginating through a list of items, while at the same
+time new items are being inserted, offset based slicing would result
+in duplicate items being shown.  A way to circumvent this is to make
+sure that the items are properly ordered and to filter on items after
+a certain point. Both strategies are supported. 
 
 
+Paginate by Slicing
+-------------------
 
+Usage::
 
+    {% more_paginator ... strategy="slice" ... %}
+
+Characteristics:
+
+- Supports both querysets and lists
+
+- Does not order the objects unless explicitly told to (`ordered_by`).
+
+Paginate by Filtering
+---------------------
+
+Usage::
+
+    {% more_paginator ... strategy="filter" ... %}
+
+Characteristics:
+
+- Only supports querysets
+
+- Enforces an ordering of the objects passed (default on `id`, overridable 
+  by `ordered_by`).
