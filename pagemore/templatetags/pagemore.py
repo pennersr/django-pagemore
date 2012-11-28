@@ -116,7 +116,7 @@ def more_paginator(context, objects, per_page=None, ordered_by=None,
     request = context['request']
     # Shortcut when there is nothing to paginate
     # not just 'if objects:' -- I don't want to eval a qs
-    if objects is None or objects == '':
+    if objects is None or objects == '' or objects == []:
         paginator = SlicingPaginator(request, [], None, None)
     else:
         paginator_klazz = { 
