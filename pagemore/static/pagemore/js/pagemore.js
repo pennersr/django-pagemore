@@ -13,6 +13,7 @@
 					 newPaginator.attr('href'));
 			  paginator.show();
 		      }
+                      container.trigger("pagemore.loaded");
 		  }
 		  );
 	    return false;
