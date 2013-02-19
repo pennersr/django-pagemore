@@ -43,6 +43,9 @@ Quickstart
     {% endfor %}
 
     <script type="text/javascript" src="{{STATIC_URL}}pagemore/js/pagemore.js"></script>
+    <script type="text/javascript">
+        $(function() { $(".pagemore-paginator").pagemore(); });
+    </script>
 
 - That's all!
 
