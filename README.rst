@@ -7,6 +7,7 @@ KISS approach to a "Load more" style AJAX paginator
 Requirements
 ============
 
+- Django 1.3+
 - jQuery
 
 Features
