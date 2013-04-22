@@ -4,6 +4,6 @@ def make_aware_utc(dt):
     """
     try:
         from django.utils import timezone
-        timezone.make_aware(dt, timezone.utc)
+        return timezone.make_aware(dt, timezone.utc)
     except ImportError:
         return dt
