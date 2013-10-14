@@ -18,8 +18,8 @@
                 settings.pageRequested(event);
                 $.get($(this).attr('href'),
                   function(resp) {
-                      $(resp).find(".pagemore-container").children().appendTo(container);
-                      var newPaginator = $(resp).find(".pagemore-paginator");
+                      $(resp).find("." + settings.containerClass).children().appendTo(container);
+                      var newPaginator = $(resp).find("." + settings.paginatorClass);
                       var lastPage = ! newPaginator.length;
                       var completedEvent = $.extend({}, event, {
                           lastPage: lastPage });
