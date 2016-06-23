@@ -4,9 +4,8 @@ from datetime import datetime
 from django import template
 from django.db.models.fields import DateTimeField
 from django.db.models.query import QuerySet
+from django.utils import timezone
 
-from ..compat import assignment_tag
-from ..compat import timezone
 
 register = template.Library()
 
@@ -61,8 +60,10 @@ class FilteringPaginator(BasePaginator):
             field_type = self.objects.model \
                 ._meta.get_field_by_name(self.order_field)[0]
             if isinstance(field_type, DateTimeField):
-                after_val = timezone.make_aware_utc(datetime.utcfromtimestamp
-                                                    (int(after_val)))
+                after_val = timezone.make_aware(
+                    datetime.utcfromtimestamp(int(after_val)),
+                    timezone.utc
+                )
             order_q = self.order_field + '__' + self.order_op
             objects = objects.filter(**{order_q: after_val} )
         objects = list(objects[0:self.per_page+1]) # evaluate qs, intentionally
