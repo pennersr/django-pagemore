@@ -58,7 +58,7 @@ class FilteringPaginator(BasePaginator):
         objects = self.objects
         if after_val is not None:
             field_type = self.objects.model \
-                ._meta.get_field_by_name(self.order_field)[0]
+            ._meta.get_field(self.order_field)
             if isinstance(field_type, DateTimeField):
                 after_val = timezone.make_aware(
                     datetime.utcfromtimestamp(int(after_val)),
