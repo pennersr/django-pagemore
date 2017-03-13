@@ -98,7 +98,7 @@ package_data = find_package_data(exclude_directories=excluded_directories)
 
 METADATA = dict(
     name='django-pagemore',
-    version='0.1.0',
+    version='0.2.0',
     author='Raymond Penners',
     author_email='raymond.penners@intenct.nl',
     description='KISS approach to a "Load more" style AJAX paginator.',
